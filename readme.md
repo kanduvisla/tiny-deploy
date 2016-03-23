@@ -16,3 +16,7 @@ To perform tasks before or after the deployment, add a shell script called `td_b
 to the root of your source folder and make it executable. When present, this file will be executed after a 
 deployment. In these files you will have a system variable called `$TD_ROOT` that represents the destination
 of your deployment.
+
+    # td_after.sh
+    echo "Deployment finished in $TD_ROOT"
+
