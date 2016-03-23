@@ -42,8 +42,18 @@ Example:
     exit 1;
 fi
 
+# Perform remote actions before deployment:
+if [ -e "$SSH_SOURCE"/td_before.sh ]; then
+    ssh "$SSH_USER"@"$SSH_HOST" TD_ROOT="$SSH_DESTINATION" "$SSH_DESTINATION"/td_before.sh
+fi;
+
 # Create remote directory if it doesn't exist:
 ssh "$SSH_USER"@"$SSH_HOST" mkdir -p "$SSH_DESTINATION"
 
 # Attempt deployment with rsync:
 rsync -avz -e ssh "$SSH_SOURCE"/* "$SSH_USER"@"$SSH_HOST":"$SSH_DESTINATION"
+
+# Perform remote actions after deployment:
+if [ -e "$SSH_SOURCE"/td_after.sh ]; then
+    ssh "$SSH_USER"@"$SSH_HOST" TD_ROOT="$SSH_DESTINATION" "$SSH_DESTINATION"/td_after.sh
+fi;
