@@ -54,23 +54,41 @@ fi
 
 # Perform remote actions before deployment:
 if [ -e "$SSH_SOURCE"/td_before.sh ]; then
-    ssh "$SSH_USER"@"$SSH_HOST" TD_ROOT="$SSH_DESTINATION" [ -e "$SSH_DESTINATION"/td_before.sh ] && "$SSH_DESTINATION"/td_before.sh 
+    ssh -o StrictHostKeyChecking=no "$SSH_USER"@"$SSH_HOST" TD_ROOT="$SSH_DESTINATION" [ -e "$SSH_DESTINATION"/td_before.sh ] && "$SSH_DESTINATION"/td_before.sh 
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
 fi;
 
 # Create remote directory if it doesn't exist:
-ssh "$SSH_USER"@"$SSH_HOST" mkdir -p "$SSH_DESTINATION"
+ssh -o StrictHostKeyChecking=no "$SSH_USER"@"$SSH_HOST" mkdir -p "$SSH_DESTINATION"
+if [ $? -ne 0 ]; then
+    exit 1
+fi
 
 # Attempt deployment with rsync:
 if [ -e "$SSH_SOURCE"/td_ignore.txt ]; then
     # Ignore local files
-    rsync -avz --del --exclude-from "$SSH_SOURCE/td_ignore.txt" -e ssh "$SSH_SOURCE"/ "$SSH_USER"@"$SSH_HOST":"$SSH_DESTINATION"
-    ssh "$SSH_USER"@"$SSH_HOST" rm "$SSH_DESTINATION"/td_ignore.txt
+    rsync -avz --del --exclude-from "$SSH_SOURCE/td_ignore.txt" -e "ssh -o StrictHostKeyChecking=no" "$SSH_SOURCE"/ "$SSH_USER"@"$SSH_HOST":"$SSH_DESTINATION"
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+    ssh -o StrictHostKeyChecking=no "$SSH_USER"@"$SSH_HOST" rm "$SSH_DESTINATION"/td_ignore.txt
 else
     # Default deployment
-    rsync -avz --del -e ssh "$SSH_SOURCE"/ "$SSH_USER"@"$SSH_HOST":"$SSH_DESTINATION"
+    rsync -avz --del -e "ssh -o StrictHostKeyChecking=no" "$SSH_SOURCE"/ "$SSH_USER"@"$SSH_HOST":"$SSH_DESTINATION"
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
 fi
 
 # Perform remote actions after deployment:
 if [ -e "$SSH_SOURCE"/td_after.sh ]; then
-    ssh "$SSH_USER"@"$SSH_HOST" TD_ROOT="$SSH_DESTINATION" "$SSH_DESTINATION"/td_after.sh
+    ssh -o StrictHostKeyChecking=no "$SSH_USER"@"$SSH_HOST" TD_ROOT="$SSH_DESTINATION" "$SSH_DESTINATION"/td_after.sh
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
 fi;
+
+# Everything went well ...
+exit 0;
