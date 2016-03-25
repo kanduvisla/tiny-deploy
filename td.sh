@@ -52,43 +52,53 @@ For more information, see \033[0;36mhttps://github.com/kanduvisla/tiny-deploy\03
     exit 1;
 fi
 
-# Perform remote actions before deployment:
-if [ -e "$SSH_SOURCE"/td_before.sh ]; then
-    ssh -o StrictHostKeyChecking=no "$SSH_USER"@"$SSH_HOST" TD_ROOT="$SSH_DESTINATION" [ -e "$SSH_DESTINATION"/td_before.sh ] && "$SSH_DESTINATION"/td_before.sh 
-    if [ $? -ne 0 ]; then
+echo "Starting deployment to remote server:
+$SSH_USER@$SSH_HOST / $SSH_SOURCE --> $SSH_DESTINATION
+"
+
+function assert_exit_code {
+    rc=$?;
+    if [[ $rc != 0 ]]; then 
+        echo "$1 (exit code $rc)" 1>&2;
         exit 1
     fi
+}
+
+# Perform remote actions before deployment:
+if [ -x "$SSH_SOURCE"/td_before.sh ] && ssh -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" [ -x "$SSH_DESTINATION/td_before.sh" ]; then
+    echo "Performing pre-deployment tasks"
+    ssh -o StrictHostKeyChecking=no "$SSH_USER"@"$SSH_HOST" TD_ROOT="$SSH_DESTINATION" "$SSH_DESTINATION"/td_before.sh 
+    assert_exit_code "Task failed"
 fi;
 
 # Create remote directory if it doesn't exist:
+echo "Attempting to create remote directory if it doesn't exist"
 ssh -o StrictHostKeyChecking=no "$SSH_USER"@"$SSH_HOST" mkdir -p "$SSH_DESTINATION"
-if [ $? -ne 0 ]; then
-    exit 1
-fi
+assert_exit_code "Task failed"
 
 # Attempt deployment with rsync:
-if [ -e "$SSH_SOURCE"/td_ignore.txt ]; then
+if [ -r "$SSH_SOURCE"/td_ignore.txt ]; then
     # Ignore local files
+    echo "Starting deployment with ignore list"
     rsync -avz --del --exclude-from "$SSH_SOURCE/td_ignore.txt" -e "ssh -o StrictHostKeyChecking=no" "$SSH_SOURCE"/ "$SSH_USER"@"$SSH_HOST":"$SSH_DESTINATION"
-    if [ $? -ne 0 ]; then
-        exit 1
-    fi
+    assert_exit_code "Task failed"
+    echo "Remove ignore list from remote host"
     ssh -o StrictHostKeyChecking=no "$SSH_USER"@"$SSH_HOST" rm "$SSH_DESTINATION"/td_ignore.txt
+    assert_exit_code "Task failed"
 else
     # Default deployment
+    echo "Starting deployment"
     rsync -avz --del -e "ssh -o StrictHostKeyChecking=no" "$SSH_SOURCE"/ "$SSH_USER"@"$SSH_HOST":"$SSH_DESTINATION"
-    if [ $? -ne 0 ]; then
-        exit 1
-    fi
+    assert_exit_code "Task failed"
 fi
 
 # Perform remote actions after deployment:
-if [ -e "$SSH_SOURCE"/td_after.sh ]; then
+if [ -x "$SSH_SOURCE"/td_after.sh ]; then
+    echo "Performing post-deployment tasks"
     ssh -o StrictHostKeyChecking=no "$SSH_USER"@"$SSH_HOST" TD_ROOT="$SSH_DESTINATION" "$SSH_DESTINATION"/td_after.sh
-    if [ $? -ne 0 ]; then
-        exit 1
-    fi
+    assert_exit_code "Task failed"
 fi;
 
 # Everything went well ...
+echo "Deployment complete"
 exit 0;
