@@ -4,6 +4,24 @@ _A small utility to deploy to a remote server_
 
 ---
 
+## Installation
+
+First, download it:
+
+    curl -O https://raw.githubusercontent.com/kanduvisla/tiny-deploy/master/td.sh
+    
+To execute it:
+
+    chmod +x td.sh
+    ./td.sh
+    
+And if you want to really impress your friends: make it globally accessible:
+
+    sudo mv td.sh /usr/local/bin/td
+    td
+    
+That's it!
+
 ## Usage
 
     ./td.sh -h server.org -u example -s ./test -d /home/example/public
